@@ -5,14 +5,13 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-import universities
 import time
 import asyncio
 
 import sql_app.models as models
 import sql_app.schemas as schemas
 from db import get_db, engine
-from sql_app.repositories import ItemRepo, StoreRepo
+from sql_app.repositories import TaskRepo
 
 app = FastAPI(title="Sample FastAPI Application",
               description="Sample FastAPI Application with Swagger and Sqlalchemy",
@@ -37,147 +36,66 @@ async def add_process_time_header(request, call_next):
     return response
 
 
-@app.post('/items', tags=["Item"], response_model=schemas.Item, status_code=201)
-async def create_item(item_request: schemas.ItemCreate, db: Session = Depends(get_db)):
+@app.post('/tasks', tags=["Task"], response_model=schemas.Task, status_code=201)
+async def create_task(task_request: schemas.TaskCreate, db: Session = Depends(get_db)):
     """
-    Create an Item and store it in the database
+    Create an Task and store it in the database
     """
 
-    db_item = ItemRepo.fetch_by_name(db, name=item_request.name)
-    if db_item:
-        raise HTTPException(status_code=400, detail="Item already exists!")
-
-    return await ItemRepo.create(db=db, item=item_request)
+    return await TaskRepo.create(db=db, task=task_request)
 
 
-@app.get('/items', tags=["Item"], response_model=List[schemas.Item])
-def get_all_items(name: Optional[str] = None, db: Session = Depends(get_db)):
+@app.get('/tasks', tags=["Task"], response_model=List[schemas.Task])
+def get_all_tasks(full_name: Optional[str] = None, db: Session = Depends(get_db)):
     """
-    Get all the Items stored in database
+    Get all the Tasks stored in database
     """
-    if name:
-        items = []
-        db_item = ItemRepo.fetch_by_name(db, name)
-        items.append(db_item)
-        return items
+    if full_name:
+        tasks = []
+        db_task = TaskRepo.fetch_by_full_name(db, full_name)
+        tasks.append(db_task)
+        return tasks
     else:
-        return ItemRepo.fetch_all(db)
+        return TaskRepo.fetch_all(db)
 
 
-@app.get('/items/{item_id}', tags=["Item"], response_model=schemas.Item)
-def get_item(item_id: int, db: Session = Depends(get_db)):
+@app.get('/tasks/{task_id}', tags=["Task"], response_model=schemas.Task)
+def get_task(task_id: int, db: Session = Depends(get_db)):
     """
-    Get the Item with the given ID provided by User stored in database
+    Get the Task with the given ID provided by User stored in database
     """
-    db_item = ItemRepo.fetch_by_id(db, item_id)
-    if db_item is None:
-        raise HTTPException(status_code=404, detail="Item not found with the given ID")
-    return db_item
+    db_task = TaskRepo.fetch_by_id(db, task_id)
+    if db_task is None:
+        raise HTTPException(status_code=404, detail="Task not found with the given ID")
+    return db_task
 
 
-@app.delete('/items/{item_id}', tags=["Item"])
-async def delete_item(item_id: int, db: Session = Depends(get_db)):
+@app.delete('/tasks/{task_id}', tags=["Task"])
+async def delete_task(task_id: int, db: Session = Depends(get_db)):
     """
-    Delete the Item with the given ID provided by User stored in database
+    Delete the Task with the given ID provided by User stored in database
     """
-    db_item = ItemRepo.fetch_by_id(db, item_id)
-    if db_item is None:
-        raise HTTPException(status_code=404, detail="Item not found with the given ID")
-    await ItemRepo.delete(db, item_id)
-    return "Item deleted successfully!"
+    db_task = TaskRepo.fetch_by_id(db, task_id)
+    if db_task is None:
+        raise HTTPException(status_code=404, detail="Task not found with the given ID")
+    await TaskRepo.delete(db, task_id)
+    return "Task deleted successfully!"
 
 
-@app.put('/items/{item_id}', tags=["Item"], response_model=schemas.Item)
-async def update_item(item_id: int, item_request: schemas.Item, db: Session = Depends(get_db)):
+@app.put('/tasks/{task_id}', tags=["Task"], response_model=schemas.Task)
+async def update_task(task_id: int, task_request: schemas.Task, db: Session = Depends(get_db)):
     """
-    Update an Item stored in the database
+    Update an Task stored in the database
     """
-    db_item = ItemRepo.fetch_by_id(db, item_id)
-    if db_item:
-        update_item_encoded = jsonable_encoder(item_request)
-        db_item.name = update_item_encoded['name']
-        db_item.price = update_item_encoded['price']
-        db_item.description = update_item_encoded['description']
-        db_item.store_id = update_item_encoded['store_id']
-        return await ItemRepo.update(db=db, item_data=db_item)
+    db_task = TaskRepo.fetch_by_id(db, task_id)
+    if db_task:
+        update_task_encoded = jsonable_encoder(task_request)
+        db_task.cert_type = update_task_encoded['cert_type']
+        db_task.full_name = update_task_encoded['full_name']
+        db_task.student_id = update_task_encoded['student_id']
+        return await TaskRepo.update(db=db, task_data=db_task)
     else:
-        raise HTTPException(status_code=400, detail="Item not found with the given ID")
-
-
-@app.post('/stores', tags=["Store"], response_model=schemas.Store, status_code=201)
-async def create_store(store_request: schemas.StoreCreate, db: Session = Depends(get_db)):
-    """
-    Create a Store and save it in the database
-    """
-    db_store = StoreRepo.fetch_by_name(db, name=store_request.name)
-    print(db_store)
-    if db_store:
-        raise HTTPException(status_code=400, detail="Store already exists!")
-
-    return await StoreRepo.create(db=db, store=store_request)
-
-
-@app.get('/stores', tags=["Store"], response_model=List[schemas.Store])
-def get_all_stores(name: Optional[str] = None, db: Session = Depends(get_db)):
-    """
-    Get all the Stores stored in database
-    """
-    if name:
-        stores = []
-        db_store = StoreRepo.fetch_by_name(db, name)
-        print(db_store)
-        stores.append(db_store)
-        return stores
-    else:
-        return StoreRepo.fetch_all(db)
-
-
-@app.get('/stores/{store_id}', tags=["Store"], response_model=schemas.Store)
-def get_store(store_id: int, db: Session = Depends(get_db)):
-    """
-    Get the Store with the given ID provided by User stored in database
-    """
-    db_store = StoreRepo.fetch_by_id(db, store_id)
-    if db_store is None:
-        raise HTTPException(status_code=404, detail="Store not found with the given ID")
-    return db_store
-
-
-@app.delete('/stores/{store_id}', tags=["Store"])
-async def delete_store(store_id: int, db: Session = Depends(get_db)):
-    """
-    Delete the Item with the given ID provided by User stored in database
-    """
-    db_store = StoreRepo.fetch_by_id(db, store_id)
-    if db_store is None:
-        raise HTTPException(status_code=404, detail="Store not found with the given ID")
-    await StoreRepo.delete(db, store_id)
-    return "Store deleted successfully!"
-
-
-@app.get("/universities/", tags=["University"])
-def get_universities() -> dict:
-    """
-    Return the List of universities for some random countries in sync way
-    """
-    data: dict = {}
-    data.update(universities.get_all_universities_for_country("turkey"))
-    data.update(universities.get_all_universities_for_country("india"))
-    data.update(universities.get_all_universities_for_country("australia"))
-    return data
-
-
-@app.get("/universities/async", tags=["University"])
-async def get_universities_async() -> dict:
-    """
-    Return the List of universities for some random countries in async way
-    """
-    data: dict = {}
-    await asyncio.gather(universities.get_all_universities_for_country_async("turkey", data),
-                         universities.get_all_universities_for_country_async("india", data),
-                         universities.get_all_universities_for_country_async("australia", data))
-    return data
-
+        raise HTTPException(status_code=400, detail="Task not found with the given ID")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", port=9000, reload=True)

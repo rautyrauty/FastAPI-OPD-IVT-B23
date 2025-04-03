@@ -2,23 +2,14 @@ from sqlalchemy import Column, ForeignKey, Integer, String, Float
 from sqlalchemy.orm import relationship
 
 from db import Base
-    
-class Item(Base):
-    __tablename__ = "items"
-    
-    id = Column(Integer, primary_key=True,index=True)
-    name = Column(String(80), nullable=False, unique=True,index=True)
-    price = Column(Float(precision=2), nullable=False)
-    description = Column(String(200))
-    store_id = Column(Integer,ForeignKey('stores.id'),nullable=False)
-    def __repr__(self):
-        return 'ItemModel(name=%s, price=%s,store_id=%s)' % (self.name, self.price,self.store_id)
-    
-class Store(Base):
-    __tablename__ = "stores"
-    id = Column(Integer, primary_key=True,index=True)
-    name = Column(String(80), nullable=False, unique=True)
-    items = relationship("Item",primaryjoin="Store.id == Item.store_id",cascade="all, delete-orphan")
 
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id = Column(Integer, primary_key=True,index=True)
+    full_name = Column(String(255), nullable=False, unique=False, index=False)
+    cert_type = Column(String(255), nullable=False, unique=False, index=False)
+    student_id = Column(Integer, nullable=False)
     def __repr__(self):
-        return 'Store(name=%s)' % self.name
+        return 'TaskModel(full_name=%s, cert_type=%s, student_id=%s)' % (self.full_name, self.cert_type, self.student_id)
+    
